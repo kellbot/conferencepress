@@ -72,7 +72,7 @@ add_action( 'init', 'sponsor_post_type_setup', 0 );
 add_image_size('sponsor_logo', 200, 200, false);
 
 }
-/*
+
 if ( ! function_exists( 'register_sponsorship_levels' ) ) {
 
 // Register Custom Taxonomy
@@ -139,14 +139,39 @@ class Sponsor_Widget extends WP_Widget {
 
 	public function widget( $args, $instance ) {
 
-		$instance = wp_parse_args( (array) $instance, array( 
-			'cp_sponsor_widget_sponsor_level' => '',
-		) );
+		echo "<h2>Sponsors</h2>";
 
-		$sponsors = new (WP_Query(array(
-			'post_type' => 'conference_sponsor'
-			)));
+		$levels = get_terms(array(
+			'taxonomy' => 'sponsorship_level',
+			'orderby' => 'slug',
+			));
 
+		foreach ($levels as $level) {
+
+			$sponsors = new WP_Query(array(
+				'post_type' => 'conference_sponsor',
+				'tax_query' => array(
+					array(
+						'taxonomy' => 'sponsorship_level',
+						'field' => 'slug',
+						'terms' => $level->slug,
+						),
+					),
+				));
+
+
+			if($sponsors->have_posts())
+				echo "<h3>$level->name</h3>";
+			while ($sponsors->have_posts()) {
+				$sponsors->the_post();
+
+				echo '<figure class="aligncenter" style="text-align: center">';
+				the_post_thumbnail('sponsor_logo');
+				echo '</figure>';
+			}
+
+			wp_reset_postdata();
+		}
 	}
 
 	public function form( $instance ) {
@@ -159,11 +184,15 @@ class Sponsor_Widget extends WP_Widget {
 		// Retrieve an existing value from the database
 		$cp_sponsor_widget_sponsor_level = !empty( $instance['cp_sponsor_widget_sponsor_level'] ) ? $instance['cp_sponsor_widget_sponsor_level'] : '';
 
+		$levels = get_terms('sponsorship_level');
+
 		// Form fields
 		echo '<p>';
 		echo '	<label for="' . $this->get_field_id( 'cp_sponsor_widget_sponsor_level' ) . '" class="cp_sponsor_widget_sponsor_level_label">' . __( 'Sponsorship Level', 'conferencepress' ) . '</label>';
 		echo '	<select id="' . $this->get_field_id( 'cp_sponsor_widget_sponsor_level' ) . '" name="' . $this->get_field_name( 'cp_sponsor_widget_sponsor_level' ) . '" class="widefat">';
-		echo '		<option value="fanatic" ' . selected( $cp_sponsor_widget_sponsor_level, 'fanatic', false ) . '> ' . __( 'Fanatic', 'conferencepress' ) . '</option>';
+		foreach ($levels as $level):
+			echo '		<option value="'.$level->slug.'" ' . selected( $cp_sponsor_widget_sponsor_level, $level->slug, false ) . '> ' . __( $level->name, 'conferencepress' ) . '</option>';
+		endforeach;
 		echo '	</select>';
 		echo '</p>';
 
@@ -183,5 +212,3 @@ function cp_sponsor_widgetregister_widgets() {
 	register_widget( 'Sponsor_Widget' );
 }
 add_action( 'widgets_init', 'cp_sponsor_widgetregister_widgets' );
-
-/*
