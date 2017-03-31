@@ -164,9 +164,12 @@ class Sponsor_Widget extends WP_Widget {
 				echo "<h3>$level->name</h3>";
 			while ($sponsors->have_posts()) {
 				$sponsors->the_post();
+					$sponsor_details_website = get_post_meta( $sponsors->post->ID, 'sponsor_details_website', true );
 
 				echo '<figure class="aligncenter" style="text-align: center">';
+				echo '<a href="' . $sponsor_details_website . '">';
 				the_post_thumbnail('sponsor_logo');
+				echo '</a>';
 				echo '</figure>';
 			}
 
@@ -212,3 +215,76 @@ function cp_sponsor_widgetregister_widgets() {
 	register_widget( 'Sponsor_Widget' );
 }
 add_action( 'widgets_init', 'cp_sponsor_widgetregister_widgets' );
+
+
+class Sponsor_Details {
+
+	public function __construct() {
+
+		if ( is_admin() ) {
+			add_action( 'load-post.php',     array( $this, 'init_metabox' ) );
+			add_action( 'load-post-new.php', array( $this, 'init_metabox' ) );
+		}
+
+	}
+
+	public function init_metabox() {
+
+		add_action( 'add_meta_boxes',        array( $this, 'add_metabox' )         );
+		add_action( 'save_post',             array( $this, 'save_metabox' ), 10, 2 );
+
+	}
+
+	public function add_metabox() {
+
+		add_meta_box(
+			'sponsor-details',
+			__( 'Sponsor Details', 'conferencepress' ),
+			array( $this, 'render_metabox' ),
+			'conference_sponsor',
+			'normal',
+			'default'
+		);
+
+	}
+
+	public function render_metabox( $post ) {
+
+		// Retrieve an existing value from the database.
+		$sponsor_details_website = get_post_meta( $post->ID, 'sponsor_details_website', true );
+
+		// Set default values.
+		if( empty( $sponsor_details_website ) ) $sponsor_details_website = '';
+
+		// Form fields.
+		echo '<table class="form-table">';
+
+		echo '	<tr>';
+		echo '		<th><label for="sponsor_details_website" class="sponsor_details_website_label">' . __( 'Website', 'conferencepress' ) . '</label></th>';
+		echo '		<td>';
+		echo '			<input type="url" id="sponsor_details_website" name="sponsor_details_website" class="sponsor_details_website_field" placeholder="' . esc_attr__( 'http://', 'conferencepress' ) . '" value="' . esc_attr( $sponsor_details_website ) . '">';
+		echo '			<p class="description">' . __( 'URL including HTTP', 'conferencepress' ) . '</p>';
+		echo '		</td>';
+		echo '	</tr>';
+
+		echo '</table>';
+
+	}
+
+	public function save_metabox( $post_id, $post ) {
+
+		// Check if it's not an autosave.
+		if ( wp_is_post_autosave( $post_id ) )
+			return;
+
+		// Sanitize user input.
+		$sponsor_details_new_website = isset( $_POST[ 'sponsor_details_website' ] ) ? esc_url( $_POST[ 'sponsor_details_website' ] ) : '';
+
+		// Update the meta field in the database.
+		update_post_meta( $post_id, 'sponsor_details_website', $sponsor_details_new_website );
+
+	}
+
+}
+
+new Sponsor_Details;
